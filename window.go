@@ -155,7 +155,6 @@ func createProcess(attr *syscall.ProcAttr) (pid int, handle uintptr, err error) 
 	}
 	si := new(syscall.StartupInfo)
 	si.Cb = uint32(unsafe.Sizeof(*si))
-	si.Flags = syscall.STARTF_USESTDHANDLES
 
 	pi := new(syscall.ProcessInformation)
 
