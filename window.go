@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	WINDOW_CLASS = "dacko"
+	WINDOW_CLASS = "ducko"
 )
 
 const (
