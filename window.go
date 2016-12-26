@@ -41,6 +41,8 @@ var (
 	getWindowThreadProcessId, _ = syscall.GetProcAddress(user32, "GetWindowThreadProcessId")
 	enumWindows, _ = syscall.GetProcAddress(user32, "EnumWindows")
 	procReplyMessage = syscall.NewLazyDLL("user32.dll").NewProc("ReplyMessage")
+	getForegroundWindow,_ = syscall.GetProcAddress(user32, "GetForegroundWindow")
+	setForegroundWindow,_ = syscall.GetProcAddress(user32, "SetForegroundWindow")
 
 	kernel32, _            = syscall.LoadLibrary("kernel32.dll")
 	waitForSingleObject, _ = syscall.GetProcAddress(kernel32, "WaitForSingleObject")
@@ -77,6 +79,19 @@ func EnumWindows(f func(syscall.Handle, uintptr) uintptr, lParam uint32) bool {
 		0)
 	
 	return ret != 0
+}
+
+func GetForegroundWindow() syscall.Handle {
+	ret,_,_ := syscall.Syscall(uintptr(getForegroundWindow), 0, 0, 0, 0)
+	return syscall.Handle(ret)
+}
+
+func SetForegroundWindow(hnd syscall.Handle) syscall.Handle {
+	ret,_,_ := syscall.Syscall(uintptr(setForegroundWindow), 1,
+		uintptr(hnd), 0, 0,
+	)
+
+	return syscall.Handle(ret)
 }
 
 func createProcess(attr *syscall.ProcAttr) (pid int, handle uintptr, err error) {
@@ -286,11 +301,14 @@ func toggleWindowbyProcID(hwnd syscall.Handle, lparam uintptr) uintptr {
 
 	if (uint32(lparam) == pid) {
 		if (winapi.IsWindowVisible(winapi.HWND(hwnd))) {
-			winapi.ShowWindow(winapi.HWND(hwnd), winapi.SW_MINIMIZE);
-			winapi.ShowWindow(winapi.HWND(hwnd), winapi.SW_HIDE);
+			if GetForegroundWindow() != hwnd {
+				SetForegroundWindow(hwnd)
+			} else {
+				winapi.ShowWindow(winapi.HWND(hwnd), winapi.SW_HIDE);
+			}
 		} else {
 			winapi.ShowWindow(winapi.HWND(hwnd), winapi.SW_SHOW);
-			winapi.ShowWindow(winapi.HWND(hwnd), winapi.SW_RESTORE);
+			SetForegroundWindow(hwnd)
 		}
 		return 0
 	}
