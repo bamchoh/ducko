@@ -155,6 +155,10 @@ func createProcess(attr *syscall.ProcAttr) (pid int, handle uintptr, err error) 
 	}
 	si := new(syscall.StartupInfo)
 	si.Cb = uint32(unsafe.Sizeof(*si))
+	if sys.HideWindow {
+		si.Flags |= syscall.STARTF_USESHOWWINDOW
+		si.ShowWindow = syscall.SW_HIDE
+	}
 
 	pi := new(syscall.ProcessInformation)
 
@@ -267,7 +271,7 @@ func isProcessGone(id uint32) bool {
 	return(dwWait == WAIT_OBJECT_0);
 }
 
-func createChildProcess(id uint32) (uint32,error) {
+func createChildProcess(id uint32, hideWindow bool) (uint32,error) {
 	if(!isProcessGone(id)) {
 		return id,nil;
 	}
@@ -275,6 +279,7 @@ func createChildProcess(id uint32) (uint32,error) {
 	var sys syscall.SysProcAttr
 	var attr syscall.ProcAttr
 
+	sys.HideWindow    = hideWindow
 	sys.CreationFlags = CREATE_NEW_CONSOLE
 	sys.CmdLine       = config.Cmdline
 
@@ -315,10 +320,10 @@ func toggleWindowbyProcID(hwnd syscall.Handle, lparam uintptr) uintptr {
 }
 
 func wndProc(hWnd winapi.HWND, msg uint32, wParam uintptr, lParam uintptr) uintptr {
+	var err error
 	switch msg {
 	case winapi.WM_HOTKEY:
-		var err error
-		dwProcessId,err = createChildProcess(dwProcessId);
+		dwProcessId,err = createChildProcess(dwProcessId, false);
 		if err != nil {
 			procReplyMessage.Call(1)
 			return 0
@@ -326,6 +331,14 @@ func wndProc(hWnd winapi.HWND, msg uint32, wParam uintptr, lParam uintptr) uintp
 
 		EnumWindows(toggleWindowbyProcID, dwProcessId)
 		return 0
+	case winapi.WM_CREATE:
+		winapi.SetTimer(hWnd, uintptr(1), 1000, uintptr(0))
+	case winapi.WM_TIMER:
+		dwProcessId,err = createChildProcess(dwProcessId, true);
+		if err != nil {
+			procReplyMessage.Call(1)
+			return 0
+		}
 	case winapi.WM_DESTROY:
 		winapi.PostQuitMessage(0)
 	default:
