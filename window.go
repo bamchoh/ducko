@@ -305,6 +305,8 @@ func toggleWindowbyProcID(hwnd syscall.Handle, lparam uintptr) uintptr {
 	if uint32(lparam) == pid {
 		if winapi.IsWindowVisible(winapi.HWND(hwnd)) {
 			if GetForegroundWindow() != hwnd {
+				winapi.ShowWindow(winapi.HWND(hwnd), winapi.SW_SHOW)
+				winapi.ShowWindow(winapi.HWND(hwnd), winapi.SW_RESTORE)
 				SetForegroundWindow(hwnd)
 			} else {
 				winapi.ShowWindow(winapi.HWND(hwnd), winapi.SW_MINIMIZE)
