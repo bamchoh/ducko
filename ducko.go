@@ -1,17 +1,17 @@
 package main
 
 import (
+	"flag"
+	"fmt"
+	"os"
 	"strings"
 	"unicode/utf8"
-	"flag"
-	"os"
-	"fmt"
 )
 
 type Config struct {
 	Cmdline string
 	WorkDir string
-	Key rune
+	Key     rune
 }
 
 var config Config
@@ -28,7 +28,7 @@ func main() {
 		os.Exit(-1)
 	}
 
-	config.Key,_ = utf8.DecodeRuneInString(strings.ToUpper(tmp))
+	config.Key, _ = utf8.DecodeRuneInString(strings.ToUpper(tmp))
 
 	if config.Key < 'A' || config.Key > 'Z' {
 		fmt.Println("Please specify hotkey flag between A to Z")
@@ -37,5 +37,3 @@ func main() {
 
 	run()
 }
-
-

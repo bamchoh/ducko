@@ -1,12 +1,12 @@
 package main
 
 import (
+	"errors"
 	"github.com/cwchiu/go-winapi"
 	"os"
 	"sync"
-	"unsafe"
 	"syscall"
-	"errors"
+	"unsafe"
 )
 
 const (
@@ -14,10 +14,10 @@ const (
 )
 
 const (
-	MOD_ALT = 1
+	MOD_ALT     = 1
 	MOD_CONTROL = 2
-	MOD_SHIFT = 4
-	MOD_WIN = 8
+	MOD_SHIFT   = 4
+	MOD_WIN     = 8
 )
 
 const (
@@ -29,27 +29,27 @@ const (
 )
 
 const (
-	WAIT_OBJECT_0 = 0x00000000
+	WAIT_OBJECT_0  = 0x00000000
 	WAIT_ABANDONED = 0x00000080
-	WAIT_timeout = 0x00000102
-	WAIT_FAILED = 0xFFFFFFFF
+	WAIT_timeout   = 0x00000102
+	WAIT_FAILED    = 0xFFFFFFFF
 )
 
 var (
-	user32, _         = syscall.LoadLibrary("user32.dll")
-	registerHotkey, _ = syscall.GetProcAddress(user32, "RegisterHotKey")
+	user32, _                   = syscall.LoadLibrary("user32.dll")
+	registerHotkey, _           = syscall.GetProcAddress(user32, "RegisterHotKey")
 	getWindowThreadProcessId, _ = syscall.GetProcAddress(user32, "GetWindowThreadProcessId")
-	enumWindows, _ = syscall.GetProcAddress(user32, "EnumWindows")
-	procReplyMessage = syscall.NewLazyDLL("user32.dll").NewProc("ReplyMessage")
-	getForegroundWindow,_ = syscall.GetProcAddress(user32, "GetForegroundWindow")
-	setForegroundWindow,_ = syscall.GetProcAddress(user32, "SetForegroundWindow")
+	enumWindows, _              = syscall.GetProcAddress(user32, "EnumWindows")
+	procReplyMessage            = syscall.NewLazyDLL("user32.dll").NewProc("ReplyMessage")
+	getForegroundWindow, _      = syscall.GetProcAddress(user32, "GetForegroundWindow")
+	setForegroundWindow, _      = syscall.GetProcAddress(user32, "SetForegroundWindow")
 
-	kernel32, _            = syscall.LoadLibrary("kernel32.dll")
-	waitForSingleObject, _ = syscall.GetProcAddress(kernel32, "WaitForSingleObject")
-	dwProcessId uint32 = 0
-	zeroProcAttr syscall.ProcAttr
-	zeroSysProcAttr syscall.SysProcAttr
-	ForkLock sync.RWMutex
+	kernel32, _                   = syscall.LoadLibrary("kernel32.dll")
+	waitForSingleObject, _        = syscall.GetProcAddress(kernel32, "WaitForSingleObject")
+	dwProcessId            uint32 = 0
+	zeroProcAttr           syscall.ProcAttr
+	zeroSysProcAttr        syscall.SysProcAttr
+	ForkLock               sync.RWMutex
 )
 
 func RegisterHotKey(hWnd winapi.HWND, id int, fsModifiers, vk uint) bool {
@@ -57,7 +57,7 @@ func RegisterHotKey(hWnd winapi.HWND, id int, fsModifiers, vk uint) bool {
 		uintptr(hWnd),
 		uintptr(id),
 		uintptr(fsModifiers),
-		uintptr(vk),0,0)
+		uintptr(vk), 0, 0)
 
 	return ret != 0
 }
@@ -77,17 +77,17 @@ func EnumWindows(f func(syscall.Handle, uintptr) uintptr, lParam uint32) bool {
 		uintptr(syscall.NewCallback(f)),
 		uintptr(lParam),
 		0)
-	
+
 	return ret != 0
 }
 
 func GetForegroundWindow() syscall.Handle {
-	ret,_,_ := syscall.Syscall(uintptr(getForegroundWindow), 0, 0, 0, 0)
+	ret, _, _ := syscall.Syscall(uintptr(getForegroundWindow), 0, 0, 0, 0)
 	return syscall.Handle(ret)
 }
 
 func SetForegroundWindow(hnd syscall.Handle) syscall.Handle {
-	ret,_,_ := syscall.Syscall(uintptr(setForegroundWindow), 1,
+	ret, _, _ := syscall.Syscall(uintptr(setForegroundWindow), 1,
 		uintptr(hnd), 0, 0,
 	)
 
@@ -178,7 +178,6 @@ func showErrorMessage(hWnd winapi.HWND, msg string) {
 	winapi.MessageBox(hWnd, s, t, winapi.MB_ICONWARNING|winapi.MB_OK)
 }
 
-
 func run() int {
 	hInstance := winapi.GetModuleHandle(nil)
 
@@ -193,7 +192,7 @@ func run() int {
 	}
 
 	var msg winapi.MSG
-	for winapi.GetMessage(&msg, 0,0,0) != 0 {
+	for winapi.GetMessage(&msg, 0, 0, 0) != 0 {
 		winapi.TranslateMessage(&msg)
 		winapi.DispatchMessage(&msg)
 	}
@@ -212,11 +211,11 @@ func registerWindowClass(hInstance winapi.HINSTANCE) winapi.ATOM {
 	wc.CbClsExtra = 0
 	wc.CbWndExtra = 0
 	wc.HInstance = hInstance
-	wc.HIcon         = winapi.LoadIcon(hInstance, winapi.MAKEINTRESOURCE(132))
-	wc.HCursor       = winapi.LoadCursor(0, winapi.MAKEINTRESOURCE(winapi.IDC_HAND))
+	wc.HIcon = winapi.LoadIcon(hInstance, winapi.MAKEINTRESOURCE(132))
+	wc.HCursor = winapi.LoadCursor(0, winapi.MAKEINTRESOURCE(winapi.IDC_HAND))
 	wc.HbrBackground = winapi.HBRUSH(winapi.GetStockObject(winapi.WHITE_BRUSH))
-	wc.LpszMenuName  = nil
-	wc.LpszClassName,_ = syscall.UTF16PtrFromString(WINDOW_CLASS)
+	wc.LpszMenuName = nil
+	wc.LpszClassName, _ = syscall.UTF16PtrFromString(WINDOW_CLASS)
 
 	return winapi.RegisterClassEx(&wc)
 }
@@ -227,12 +226,12 @@ func initializeInstance(hInstance winapi.HINSTANCE, nCmdShow int) error {
 
 	hWnd := winapi.CreateWindowEx(
 		winapi.WS_EX_TOOLWINDOW|winapi.WS_EX_TOPMOST|winapi.WS_EX_NOACTIVATE|winapi.WS_EX_LAYERED,
-		pc,pt,winapi.WS_POPUP,
+		pc, pt, winapi.WS_POPUP,
 		0,
 		0,
 		0,
 		0,
-		0,0,hInstance,nil)
+		0, 0, hInstance, nil)
 
 	if hWnd == 0 {
 		return errors.New("CreateWindowEx failed")
@@ -241,7 +240,7 @@ func initializeInstance(hInstance winapi.HINSTANCE, nCmdShow int) error {
 	winapi.ShowWindow(hWnd, int32(nCmdShow))
 	winapi.UpdateWindow(hWnd)
 
-	if (RegisterHotKey(hWnd, 0, MOD_ALT|MOD_CONTROL, uint(config.Key)) == false) {
+	if RegisterHotKey(hWnd, 0, MOD_ALT|MOD_CONTROL, uint(config.Key)) == false {
 		return errors.New("RegisterHotKey failed")
 	}
 
@@ -253,12 +252,12 @@ func finalizeInstance(hInstance winapi.HINSTANCE) error {
 }
 
 func isProcessGone(id uint32) bool {
-	hProcess,err := syscall.OpenProcess(SYNCHRONIZE, false, id);
+	hProcess, err := syscall.OpenProcess(SYNCHRONIZE, false, id)
 	if err != nil {
-		return true;
+		return true
 	}
 
-	dwWait,err := syscall.WaitForSingleObject(hProcess,0);
+	dwWait, err := syscall.WaitForSingleObject(hProcess, 0)
 	if err != nil {
 		return false
 	}
@@ -268,20 +267,20 @@ func isProcessGone(id uint32) bool {
 		return false
 	}
 
-	return(dwWait == WAIT_OBJECT_0);
+	return (dwWait == WAIT_OBJECT_0)
 }
 
-func createChildProcess(id uint32, hideWindow bool) (uint32,error) {
-	if(!isProcessGone(id)) {
-		return id,nil;
+func createChildProcess(id uint32, hideWindow bool) (uint32, error) {
+	if !isProcessGone(id) {
+		return id, nil
 	}
 
 	var sys syscall.SysProcAttr
 	var attr syscall.ProcAttr
 
-	sys.HideWindow    = hideWindow
+	sys.HideWindow = hideWindow
 	sys.CreationFlags = CREATE_NEW_CONSOLE
-	sys.CmdLine       = config.Cmdline
+	sys.CmdLine = config.Cmdline
 
 	attr.Files = make([]uintptr, 3)
 	attr.Sys = &sys
@@ -293,7 +292,7 @@ func createChildProcess(id uint32, hideWindow bool) (uint32,error) {
 
 	pid, _, err := createProcess(&attr)
 	if err != nil {
-		return 0,err
+		return 0, err
 	}
 
 	return uint32(pid), nil
@@ -303,15 +302,17 @@ func toggleWindowbyProcID(hwnd syscall.Handle, lparam uintptr) uintptr {
 	var pid uint32
 	_, pid = GetWindowThreadProcessId(hwnd)
 
-	if (uint32(lparam) == pid) {
-		if (winapi.IsWindowVisible(winapi.HWND(hwnd))) {
+	if uint32(lparam) == pid {
+		if winapi.IsWindowVisible(winapi.HWND(hwnd)) {
 			if GetForegroundWindow() != hwnd {
 				SetForegroundWindow(hwnd)
 			} else {
-				winapi.ShowWindow(winapi.HWND(hwnd), winapi.SW_HIDE);
+				winapi.ShowWindow(winapi.HWND(hwnd), winapi.SW_MINIMIZE)
+				winapi.ShowWindow(winapi.HWND(hwnd), winapi.SW_HIDE)
 			}
 		} else {
-			winapi.ShowWindow(winapi.HWND(hwnd), winapi.SW_SHOW);
+			winapi.ShowWindow(winapi.HWND(hwnd), winapi.SW_SHOW)
+			winapi.ShowWindow(winapi.HWND(hwnd), winapi.SW_RESTORE)
 			SetForegroundWindow(hwnd)
 		}
 		return 0
@@ -323,7 +324,7 @@ func wndProc(hWnd winapi.HWND, msg uint32, wParam uintptr, lParam uintptr) uintp
 	var err error
 	switch msg {
 	case winapi.WM_HOTKEY:
-		dwProcessId,err = createChildProcess(dwProcessId, false);
+		dwProcessId, err = createChildProcess(dwProcessId, false)
 		if err != nil {
 			procReplyMessage.Call(1)
 			return 0
@@ -334,7 +335,7 @@ func wndProc(hWnd winapi.HWND, msg uint32, wParam uintptr, lParam uintptr) uintp
 	case winapi.WM_CREATE:
 		winapi.SetTimer(hWnd, uintptr(1), 1000, uintptr(0))
 	case winapi.WM_TIMER:
-		dwProcessId,err = createChildProcess(dwProcessId, true);
+		dwProcessId, err = createChildProcess(dwProcessId, true)
 		if err != nil {
 			procReplyMessage.Call(1)
 			return 0
